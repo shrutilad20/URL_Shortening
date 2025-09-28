@@ -1,4 +1,5 @@
 package com.shortenURL.URL.model;
+
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 

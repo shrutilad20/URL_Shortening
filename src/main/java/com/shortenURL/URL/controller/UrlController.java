@@ -1,11 +1,9 @@
 package com.shortenURL.URL.controller;
 
 import org.springframework.web.bind.annotation.*;
-
 import com.shortenURL.URL.repository.UrlRepository;
 import com.shortenURL.URL.model.Url;
-
-
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import java.util.Optional;
 import java.util.Random;
@@ -22,17 +20,26 @@ public class UrlController {
     }
 
     @PostMapping("/shorten")
-    public String shortenUrl(@RequestBody String longUrl) {
-        String shortCode = generateShortCode();
-        Url url = new Url(longUrl, shortCode);
+    public ResponseEntity<String> shortenUrl(@RequestBody UrlRequest request) {
+        String alias = request.getCustomAlias();
+        if(alias != null && !alias.isEmpty()) {
+            // Check if custom alias already exists
+            if(urlRepository.existsByShortCode(alias)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Alias already taken");
+            }
+        } else {
+            alias = generateRandomShortCode();
+        }
+
+        Url url = new Url(request.getLongUrl(), alias);
         urlRepository.save(url);
-        return BASE_URL + shortCode;
+        return ResponseEntity.ok(BASE_URL + alias);
     }
 
     @GetMapping("/{shortCode}")
     public ResponseEntity<?> redirectUrl(@PathVariable String shortCode) {
         Optional<Url> optionalUrl = urlRepository.findByShortCode(shortCode);
-        if (optionalUrl.isPresent()) {
+        if(optionalUrl.isPresent()) {
             Url url = optionalUrl.get();
             url.setClicks(url.getClicks() + 1);
             urlRepository.save(url);
@@ -43,7 +50,7 @@ public class UrlController {
         return ResponseEntity.notFound().build();
     }
 
-    private String generateShortCode() {
+    private String generateRandomShortCode() {
         int length = 6;
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         Random rnd = new Random();
